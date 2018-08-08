@@ -16,8 +16,8 @@ struct Vertex {
 struct Cloud {
 	Vertex* pointer;
 	std::string cloudPath;
-	std::string basePath;
-	std::string FolderPath;
+	std::string name;
+	std::string folderPath;
 	int cloudSize;
 	double bounds[6];
 	double center[3];

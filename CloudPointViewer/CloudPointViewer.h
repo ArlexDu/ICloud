@@ -3,6 +3,12 @@
 #include <QtWidgets/QMainWindow>
 #include "ui_CloudPointViewer.h"
 #include "CenterWindow.h"
+#include "Function.h"
+#include "ReadThread.h"
+#include <qfiledialog.h>
+#include <qstandarditemmodel.h>
+#include <qobject.h>
+#include <qprogressbar.h>
 
 class CloudPointViewer : public QMainWindow
 {
@@ -13,13 +19,19 @@ public:
 
 public slots:
 	void on_actionOpen_triggered();
+	void addFileTree(Cloud cloud);
+	signals:
+	void deleteFile(int i);
 
 private:
 	QList<QDockWidget*> m_docks;
 	Ui::CloudPointViewerClass ui;
-	CenterWindow* ViewerWindow;
+	//文件列表模型
+	QStandardItemModel* fileModel;
+	//读取文件线程
+	ReadThread thread;
+	//进度条
+	QProgressBar* pProgressBar;
 	void initAll();
-	void initWindow();
 	void resizeWindow();
-	void setCenterView(QWidget* viewer);
 };

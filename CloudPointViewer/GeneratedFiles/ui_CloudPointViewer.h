@@ -15,13 +15,13 @@
 #include <QtWidgets/QButtonGroup>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QHeaderView>
-#include <QtWidgets/QListWidget>
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QMenuBar>
 #include <QtWidgets/QStatusBar>
 #include <QtWidgets/QTableView>
 #include <QtWidgets/QToolBar>
+#include <QtWidgets/QTreeView>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
 
@@ -32,18 +32,21 @@ class Ui_CloudPointViewerClass
 public:
     QAction *actionOpen;
     QAction *actionSave;
+    QAction *actionColorBar;
+    QAction *action;
     QWidget *centralWidget;
     QVBoxLayout *verticalLayout_2;
     QVBoxLayout *verticalLayout;
     QHBoxLayout *horizontalLayout;
     QHBoxLayout *fileLayout;
-    QListWidget *fileList;
+    QTreeView *fileview;
     QHBoxLayout *ViewLayout;
     QHBoxLayout *InforLayout;
     QTableView *information;
     QHBoxLayout *WaveLayout;
     QMenuBar *menuBar;
     QMenu *menu;
+    QMenu *menuEdit;
     QToolBar *mainToolBar;
     QStatusBar *statusBar;
 
@@ -56,6 +59,10 @@ public:
         actionOpen->setObjectName(QStringLiteral("actionOpen"));
         actionSave = new QAction(CloudPointViewerClass);
         actionSave->setObjectName(QStringLiteral("actionSave"));
+        actionColorBar = new QAction(CloudPointViewerClass);
+        actionColorBar->setObjectName(QStringLiteral("actionColorBar"));
+        action = new QAction(CloudPointViewerClass);
+        action->setObjectName(QStringLiteral("action"));
         centralWidget = new QWidget(CloudPointViewerClass);
         centralWidget->setObjectName(QStringLiteral("centralWidget"));
         verticalLayout_2 = new QVBoxLayout(centralWidget);
@@ -71,10 +78,10 @@ public:
         fileLayout = new QHBoxLayout();
         fileLayout->setSpacing(6);
         fileLayout->setObjectName(QStringLiteral("fileLayout"));
-        fileList = new QListWidget(centralWidget);
-        fileList->setObjectName(QStringLiteral("fileList"));
+        fileview = new QTreeView(centralWidget);
+        fileview->setObjectName(QStringLiteral("fileview"));
 
-        fileLayout->addWidget(fileList);
+        fileLayout->addWidget(fileview);
 
 
         horizontalLayout->addLayout(fileLayout);
@@ -119,6 +126,8 @@ public:
         menuBar->setGeometry(QRect(0, 0, 952, 23));
         menu = new QMenu(menuBar);
         menu->setObjectName(QStringLiteral("menu"));
+        menuEdit = new QMenu(menuBar);
+        menuEdit->setObjectName(QStringLiteral("menuEdit"));
         CloudPointViewerClass->setMenuBar(menuBar);
         mainToolBar = new QToolBar(CloudPointViewerClass);
         mainToolBar->setObjectName(QStringLiteral("mainToolBar"));
@@ -128,8 +137,11 @@ public:
         CloudPointViewerClass->setStatusBar(statusBar);
 
         menuBar->addAction(menu->menuAction());
+        menuBar->addAction(menuEdit->menuAction());
         menu->addAction(actionOpen);
         menu->addAction(actionSave);
+        menuEdit->addAction(actionColorBar);
+        menuEdit->addAction(action);
 
         retranslateUi(CloudPointViewerClass);
 
@@ -139,9 +151,12 @@ public:
     void retranslateUi(QMainWindow *CloudPointViewerClass)
     {
         CloudPointViewerClass->setWindowTitle(QApplication::translate("CloudPointViewerClass", "CloudPointViewer", nullptr));
-        actionOpen->setText(QApplication::translate("CloudPointViewerClass", "Open", nullptr));
-        actionSave->setText(QApplication::translate("CloudPointViewerClass", "Save", nullptr));
-        menu->setTitle(QApplication::translate("CloudPointViewerClass", "File", nullptr));
+        actionOpen->setText(QApplication::translate("CloudPointViewerClass", "\346\211\223\345\274\200", nullptr));
+        actionSave->setText(QApplication::translate("CloudPointViewerClass", "\344\277\235\345\255\230", nullptr));
+        actionColorBar->setText(QApplication::translate("CloudPointViewerClass", "ColorBar", nullptr));
+        action->setText(QApplication::translate("CloudPointViewerClass", "\347\211\207\351\235\242\345\214\226", nullptr));
+        menu->setTitle(QApplication::translate("CloudPointViewerClass", "\346\226\207\344\273\266", nullptr));
+        menuEdit->setTitle(QApplication::translate("CloudPointViewerClass", "\347\274\226\350\276\221", nullptr));
     } // retranslateUi
 
 };

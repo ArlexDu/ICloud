@@ -1,10 +1,12 @@
 #include "CloudPointViewer.h"
 #include <QtWidgets/QApplication>
+#include <qobject.h>
+
 
 int main(int argc, char *argv[])
 {
-	QApplication a(argc, argv);
-	CloudPointViewer w;
-	w.show();
-	return a.exec();
+	QApplication app(argc, argv);
+	CloudPointViewer window;
+	window.show();
+	return app.exec();
 }

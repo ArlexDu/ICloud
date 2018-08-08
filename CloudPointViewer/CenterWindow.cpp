@@ -1,6 +1,6 @@
 #include "CenterWindow.h"
-#include "cloudIO.h"
 #include <qfileinfo.h>
+#include <boost\thread.hpp>
 CenterWindow::CenterWindow() {
 	CenterWindow("");
 }
@@ -9,45 +9,38 @@ CenterWindow::CenterWindow(QString path) {
 
 }
 
-bool CenterWindow::initFromPath(QString path) {
-	QFileInfo pathAnalyser(path);
-	if (pathAnalyser.isFile()) {
-		isDrawCloud = true;
-		cloudIO* cloudio = new cloudIO(path.toStdString());
-		if (cloudio->Read()) {
-			Cloud c = cloudio->getCloud();
-			//给每个点云一个对应的坐标空间（基于世界坐标）
-			ManipulatedFrame* frame = new ManipulatedFrame();
-			frame->setTranslation(Vec(c.center[0],c.center[1],c.center[2]));
-			frames.append(frame);
-			//更新可是空间位置
-			if (bounds[0]==0&& bounds[1] == 0 && bounds[2] == 0 && bounds[3] == 0 && bounds[4] == 0 && bounds[5] == 0 ) {
-				for (int i = 0; i < 6; i++) {
-					bounds[i] = c.bounds[i];
-				}
-			}
-			else {
-				bounds[0] = c.bounds[0] < bounds[0] ? c.bounds[0]: bounds[0];
-				bounds[1] = c.bounds[1] > bounds[1] ? c.bounds[1] : bounds[1];
-				bounds[2] = c.bounds[2] < bounds[2] ? c.bounds[2] : bounds[2];
-				bounds[3] = c.bounds[3] > bounds[3] ? c.bounds[3] : bounds[3];
-				bounds[4] = c.bounds[4] < bounds[4] ? c.bounds[4] : bounds[4];
-				bounds[5] = c.bounds[5] > bounds[5] ? c.bounds[5] : bounds[5];
-			}
-			cloudList.push_back(c);
-			firstOpen = true;
-			return true;
+//文件读取完毕之后的信号槽函数
+void CenterWindow::addCloud(Cloud c) {
+	isDrawCloud = true;
+	//给每个点云一个对应的坐标空间（基于世界坐标）
+	ManipulatedFrame* frame = new ManipulatedFrame();
+	frame->setTranslation(Vec(c.center[0], c.center[1], c.center[2]));
+	frames.append(frame);
+	//更新可是空间位置
+	if (bounds[0] == 0 && bounds[1] == 0 && bounds[2] == 0 && bounds[3] == 0 && bounds[4] == 0 && bounds[5] == 0) {
+		for (int i = 0; i < 6; i++) {
+			bounds[i] = c.bounds[i];
 		}
 	}
 	else {
-		qDebug() << "File is invalid";
+		bounds[0] = c.bounds[0] < bounds[0] ? c.bounds[0] : bounds[0];
+		bounds[1] = c.bounds[1] > bounds[1] ? c.bounds[1] : bounds[1];
+		bounds[2] = c.bounds[2] < bounds[2] ? c.bounds[2] : bounds[2];
+		bounds[3] = c.bounds[3] > bounds[3] ? c.bounds[3] : bounds[3];
+		bounds[4] = c.bounds[4] < bounds[4] ? c.bounds[4] : bounds[4];
+		bounds[5] = c.bounds[5] > bounds[5] ? c.bounds[5] : bounds[5];
 	}
-	return false;
+	cloudList.push_back(c);
+	firstOpen = true;
+	progress = 0.0;
 }
 
 void CenterWindow::postDraw() {
 	QGLViewer::postDraw();
-	drawCornerAxis();
+	if (isDrawCloud) {
+		drawCornerAxis();
+		drawColorBar();
+	}
 }
 
 void CenterWindow::drawWithNames() {
@@ -55,10 +48,15 @@ void CenterWindow::drawWithNames() {
 }
 // Draws a spiral
 void CenterWindow::draw() {
-	Vec pos = camera()->position();
+	//Vec pos = camera()->position();
 	//qDebug() << "camera postion "<<pos.x<<","<<pos.y<<","<<pos.z;
 	if (isDrawCloud) {
 		drawCloud();
+		//画出可视范围
+		drawAxisCircle(ratio);
+	}
+	else if (progress!=0.0) {
+		drawProgress();
 	}
 	else {
 		const float nbSteps = 200.0;
@@ -102,10 +100,7 @@ void CenterWindow::draw() {
 		glVertex3d(-0.5f, -0.5f, -0.5f);
 		glEnd();
 	}
-	//画出可视范围
-	drawAxisCircle(ratio);
 }
-
 void CenterWindow::init() {
 	firstOpen = false;
 	isDrawCloud = false;
@@ -232,15 +227,32 @@ void CenterWindow::drawCloud(bool postSelection) {
 		if (i == selectedName()) {
 			drawAxis(width() / 5.0f);
 		}
-		glBegin(GL_POINTS);
-		if (i == selectedName()) {
-			glColor4f(1.0, 1.0, 0.0, 1.0);
+		if (drawPoint) {
+			glBegin(GL_POINTS);
 		}
 		else
 		{
-			glColor4f(1.0, 0.0, 0.0, 1.0);
+			
 		}
+		
+		if (i == selectedName()) {
+			glColor4f(1.0, 1.0, 0.0, 1.0);
+		}
+		int red = 0;
+		int green = 0;
+		int blue = 0;
 		for (int k = 0; k < cloudNum; k++) {
+
+			if ((cp[k].z - cloud.center[2])<=0.1)
+			{
+				glColor4f(1.0, 0.0, 0.0, 1.0);
+			}
+			else if ((cp[k].z - cloud.center[2])>0.1&&(cp[k].z - cloud.center[2])<=0.4) {
+				glColor4f(0.0, 1.0, 0.0, 1.0);
+			}
+			else {
+				glColor4f(0.0, 0.0, 1.0, 1.0);
+			}
 			glVertex3d(cp[k].x-cloud.center[0], cp[k].y - cloud.center[1], cp[k].z-cloud.center[2]);
 		}
 		glEnd();
@@ -271,7 +283,7 @@ void CenterWindow::drawCornerAxis() {
 	glGetIntegerv(GL_SCISSOR_BOX,scissor);
 
 	//设置新的窗口大小
-	const int size = 50;
+	const int size = 100;
 	glViewport(0,0,size,size);
 	//清除深度缓存
 	glClear(GL_DEPTH_BUFFER_BIT);
@@ -287,6 +299,7 @@ void CenterWindow::drawCornerAxis() {
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
 	glLoadIdentity();
+	//当前的三角形与摄像头的角度保持一致
 	glMultMatrixd(camera()->orientation().inverse().matrix());
 
 	glBegin(GL_LINES);
@@ -329,4 +342,131 @@ void CenterWindow::postSelection(const QPoint &point) {
 			QString::number(point.y());
 		setManipulatedFrame(frames[selectedName()]);
 	}
+}
+
+void CenterWindow::drawColorBar() {
+	int viewport[4];
+	int scissor[4];
+	//窗口大小
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	//裁剪空间大小
+	glGetIntegerv(GL_SCISSOR_BOX, scissor);
+
+	//设置新的窗口大小
+	const int width = 50;
+	const int height = 300;
+	glViewport(viewport[2]-width*1.5, viewport[3] - height*1.5, width, height);
+	//清除深度缓存
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glDisable(GL_LIGHTING);
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	//正交窗口的剪切空间
+	glOrtho(-1, 1, -1, 1, -1, 1);
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+
+	glBegin(GL_QUADS);
+	//红色
+	glColor3f(1.0, 0.0, 0.0);
+	glVertex3f(-0.5, -0.5, 0.0);
+	glVertex3f(0.5, -0.5, 0.0);
+	//绿色
+	glColor3f(0.0, 1.0, 0.0);
+	glVertex3f(0.5, 0.0, 0.0);
+	glVertex3f(-0.5, 0.0, 0.0);
+
+	//绿色
+	glColor3f(0.0, 1.0, 0.0);
+	glVertex3f(-0.5, 0.0, 0.0);
+	glVertex3f(0.5, 0.0, 0.0);
+
+	//蓝色
+	glColor3f(0.0, 0.0, 1.0);
+	glVertex3f(0.5, 0.5, 0.0);
+	glVertex3f(-0.5, 0.5, 0.0);
+	glEnd();
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
+	glEnable(GL_LIGHTING);
+
+	//恢复原本的状态
+	glScissor(scissor[0], scissor[1], scissor[2], scissor[3]);
+	glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+	glLineWidth(1.0);
+}
+
+void CenterWindow::deleteCloud(int i) {
+	//删除点云和它对应的坐标空间
+	cloudList.removeAt(i);
+	frames.removeAt(i);
+}
+
+void CenterWindow::drawProgress() {
+	qDebug() << "draw progress";
+	int viewport[4];
+	int scissor[4];
+	//窗口大小
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	//裁剪空间大小
+	glGetIntegerv(GL_SCISSOR_BOX, scissor);
+
+	//设置新的窗口大小
+	const int width = viewport[2]/3;
+	const int height = width/5;
+	glViewport((viewport[2]-width)/2,(viewport[3]-height)/2, width, height);
+	//清除深度缓存
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glDisable(GL_LIGHTING);
+
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	//正交窗口的剪切空间
+	glOrtho(-1, 1, -1, 1, 0, 0);
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+
+	glBegin(GL_QUADS);
+	progress = progress * 2 - 1;
+	//进度条颜色
+	glColor4f(0.0, 1.0, 0.0,1.0);
+	glVertex3f(-1.0, -1.0, 0.0);
+	glVertex3f(-1.0, 1.0, 0.0);
+	glVertex3f(progress, 1.0, 0.0);
+	glVertex3f(progress, -1.0, 0.0);
+	//背景颜色
+	glColor4f(1.0, 0.0, 0.0, 1.0);
+	glVertex3f(progress, -1.0, 0.0);
+	glVertex3f(progress, 1.0, 0.0);
+	glVertex3f(1.0, 1.0, 0.0);
+	glVertex3f(1.0, -1.0, 0.0);
+	glEnd();
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+	glPopMatrix();
+
+	glEnable(GL_LIGHTING);
+
+	//恢复原本的状态
+	glScissor(scissor[0], scissor[1], scissor[2], scissor[3]);
+	glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+	glLineWidth(1.0);
+}
+
+void CenterWindow::setProgress(double p) {
+	progress = p;
+	this->update();
 }

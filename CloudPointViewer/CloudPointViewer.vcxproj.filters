@@ -39,13 +39,13 @@
     <ClCompile Include="Function.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="cloudIO.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="pointCloud.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CenterWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ReadThread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -54,6 +54,9 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="CenterWindow.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="ReadThread.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
@@ -69,9 +72,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Function.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cloudIO.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CloudStruct.h">

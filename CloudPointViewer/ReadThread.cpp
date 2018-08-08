@@ -1,49 +1,52 @@
-#include "cloudIO.h"
-#include <qfileinfo.h>
-cloudIO::cloudIO(){
+#include "ReadThread.h"
+
+ReadThread::ReadThread(QObject *parent)
+	: QThread(parent)
+{
 
 }
 
-cloudIO::cloudIO(string path){
-	setPath(path);
+ReadThread::~ReadThread()
+{
 }
 
-void cloudIO::setPath(string path) {
+void ReadThread::setPath(std::string p) {
+	path = p;
 	cloud.cloudPath = path;
 	QFileInfo fileInfo(QString::fromStdString(path));
-	cloud.FolderPath = fileInfo.path().toStdString();
-	cloud.basePath = fileInfo.fileName().toStdString();
-}
-bool cloudIO::Read() {
-	if (cloud.cloudPath == std::string("")) {
-		qDebug() << "Invalid Cloud Path" << endl;
-		return false;
-	}
-	else
-	{
-		return readPointCloudFromPath();
-	}
+	cloud.folderPath = fileInfo.path().toStdString();
+	cloud.name = fileInfo.fileName().toStdString();
 }
 
-bool cloudIO::readPointCloudFromPath() {
-	return ReadPointCloudFromTXT();
+//开启分线程
+void ReadThread::run() {
+	qDebug() << "run in thread";
+	readPointCloudFromPath();
 }
 
-int cloudIO::getFileCount() {
-	ifstream fin;
+//获得文件的点云总数量
+int ReadThread::getFileCount() {
+	std::ifstream fin;
 	fin.open(cloud.cloudPath);
 	int lineCt = 0;
 	char c;
 	while (fin.get(c)) {
 		if (c == '\n') {
-			lineCt ++ ;
+			lineCt++;
 		}
 	}
 	lineCt++;
 	fin.close();
 	return lineCt;
 }
-bool cloudIO::ReadPointCloudFromTXT() {
+
+//读取点云数据
+bool ReadThread::readPointCloudFromPath() {
+	return ReadPointCloudFromTXT();
+}
+
+//从txt读取点云数据
+bool ReadThread::ReadPointCloudFromTXT() {
 	qDebug() << "Read TXT";
 	long start, end;
 	start = clock();
@@ -51,16 +54,17 @@ bool cloudIO::ReadPointCloudFromTXT() {
 	cloud.pointer = new Vertex[lineCt];
 	cloud.cloudSize = lineCt;
 	//先使用普通的fstream读文件，之后考虑更换为内存文件映射
-	ifstream fin;
+	std::ifstream fin;
 	fin.open(cloud.cloudPath);
-	string str;
+	std::string str;
 	int i = 0;
 	double minX = 0, maxX = 0, minY = 0, maxY = 0, minZ = 0, maxZ = 0;
+	double progress = 0.0;
 	while (!fin.eof()) {
-		getline(fin,str);
-		trim(str);
-		vector<string> vec;
-		split(vec, str, is_any_of(","));
+		getline(fin, str);
+		boost::trim(str);
+		std::vector<std::string> vec;
+		boost::split(vec, str, boost::is_any_of(","));
 		if (vec.size() == 3) {
 			cloud.pointer[i].x = atof(vec[0].c_str());
 			cloud.pointer[i].y = atof(vec[1].c_str());
@@ -82,6 +86,8 @@ bool cloudIO::ReadPointCloudFromTXT() {
 			minZ = cloud.pointer[i].z < minZ ? cloud.pointer[i].z : minZ;
 			maxZ = cloud.pointer[i].z > maxZ ? cloud.pointer[i].z : maxZ;
 		}
+		progress = (double)i / lineCt;
+		emit sendProgress(progress);
 		i++;
 	}
 	cloud.bounds[0] = minX;
@@ -96,9 +102,6 @@ bool cloudIO::ReadPointCloudFromTXT() {
 	fin.close();
 	end = clock();
 	qDebug() << "Totle Time : " << (double)(end - start) / CLOCKS_PER_SEC << "s" << endl;
+	emit readComplete(cloud);
 	return true;
-}
-
-Cloud cloudIO::getCloud() {
-	return cloud;
 }
